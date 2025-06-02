@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!-- saved from url=(0047)file:///C:/Users/toshiba/Documents/gajibot.html -->
+<html lang="ms"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <title>GajiBot Pro</title>
+  <style>
+    body { font-family: sans-serif; background: #f2f2f2; padding: 20px; }
+    #chat { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .message { margin: 10px 0; }
+    .bot { color: #007bff; }
+    .user { text-align: right; color: #28a745; }
+    input[type="text"] { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+
+<div id="chat">
+  <div class="message bot">Hai! Saya GajiBot Pro 🤖. Nak kira apa hari ni?<br>
+    Taip nombor pilihan:
+    <br>1️⃣ Gaji Biasa + KWSP
+    <br>2️⃣ Kira OT
+    <br>3️⃣ Potongan Gaji (KWSP/SOCSO/EIS)
+    <br>4️⃣ Kira Gaji Sehari (ikut waktu)
+    <br>5️⃣ Potongan Cuti Sehari
+    <br>6️⃣ Potongan Gatepass (per jam)
+  </div>
+</div>
+
+<input type="text" id="userInput" placeholder="Taip jawapan di sini..." onkeypress="handleKey(event)">
+
+<script>
+let step = 0, mode = '';
+let gajiAsas = 0, elaun = 0, otJam = 0, kwspRate = 11;
+let waktuMasuk = '', waktuKeluar = '', potJam = 0;
+
+function handleKey(e) {
+  if (e.key === 'Enter') {
+    const input = document.getElementById('userInput').value.trim();
+    if (!input) return;
+    appendUser(input);
+    document.getElementById('userInput').value = '';
+    handleInput(input);
+  }
+}
+
+function appendUser(text) {
+  document.getElementById('chat').innerHTML += `<div class="message user">${text}</div>`;
+}
+
+function appendBot(text) {
+  document.getElementById('chat').innerHTML += `<div class="message bot">${text}</div>`;
+  document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+}
+
+function timeToDecimal(t) {
+  const [jam, min] = t.split(':').map(Number);
+  return jam + (min / 60);
+}
+
+function handleInput(input) {
+  if (step === 0) {
+    if (['1','2','3','4','5','6'].includes(input)) {
+      mode = input;
+      step = 1;
+      appendBot('Masukkan gaji asas (RM):');
+    } else {
+      appendBot('Sila pilih antara 1 - 6 sahaja ya bos 😅');
+    }
+  }
+
+  // Gaji + KWSP
+  else if (mode === '1') {
+    if (step === 1) {
+      gajiAsas = parseFloat(input);
+      step = 2;
+      appendBot('Masukkan elaun tambahan (RM), kalau tiada taip 0:');
+    } else if (step === 2) {
+      elaun = parseFloat(input);
+      step = 3;
+      appendBot('Guna kadar KWSP berapa? (11 atau 9)');
+    } else if (step === 3) {
+      kwspRate = parseInt(input) === 9 ? 9 : 11;
+      const kasar = gajiAsas + elaun;
+      const kwsp = kasar * (kwspRate / 100);
+      const socso = 9.90, eis = 4.85;
+      const bersih = kasar - kwsp - socso - eis;
+      appendBot(`Gaji Kasar: RM${kasar.toFixed(2)}<br>KWSP (${kwspRate}%): RM${kwsp.toFixed(2)}<br>SOCSO: RM${socso}<br>EIS: RM${eis}<br><b>Gaji Bersih: RM${bersih.toFixed(2)}</b>`);
+      step = 0;
+    }
+  }
+
+  // OT
+  else if (mode === '2') {
+    if (step === 1) {
+      gajiAsas = parseFloat(input);
+      step = 2;
+      appendBot('Masukkan jumlah jam OT bulan ni:');
+    } else if (step === 2) {
+      otJam = parseFloat(input);
+      const sejam = gajiAsas / 26 / 8;
+      const otRate = sejam * 1.5;
+      const totalOT = otRate * otJam;
+      appendBot(`Kadar OT sejam: RM${otRate.toFixed(2)}<br>Jumlah OT: RM${totalOT.toFixed(2)}`);
+      step = 0;
+    }
+  }
+
+  // Potongan Gaji
+  else if (mode === '3') {
+    if (step === 1) {
+      gajiAsas = parseFloat(input);
+      step = 2;
+      appendBot('Guna kadar KWSP berapa? (11 atau 9)');
+    } else if (step === 2) {
+      kwspRate = parseInt(input) === 9 ? 9 : 11;
+      const kwsp = gajiAsas * (kwspRate / 100);
+      const socso = 9.90, eis = 4.85;
+      const bersih = gajiAsas - kwsp - socso - eis;
+      appendBot(`KWSP (${kwspRate}%): RM${kwsp.toFixed(2)}<br>SOCSO: RM${socso}<br>EIS: RM${eis}<br><b>Gaji Bersih: RM${bersih.toFixed(2)}</b>`);
+      step = 0;
+    }
+  }
+
+  // Gaji ikut waktu masuk/keluar
+  else if (mode === '4') {
+    if (step === 1) {
+      gajiAsas = parseFloat(input);
+      step = 2;
+      appendBot('Masukkan masa masuk (cth: 08:30)');
+    } else if (step === 2) {
+      waktuMasuk = input;
+      step = 3;
+      appendBot('Masukkan masa keluar (cth: 17:30)');
+    } else if (step === 3) {
+      waktuKeluar = input;
+      const jamKerja = timeToDecimal(waktuKeluar) - timeToDecimal(waktuMasuk);
+      const gajiSehari = gajiAsas / 26;
+      const gajiSejam = gajiSehari / 8;
+      const jumlah = jamKerja * gajiSejam;
+      appendBot(`Masa kerja: ${jamKerja.toFixed(2)} jam<br>Gaji Sehari (ikut waktu): RM${jumlah.toFixed(2)}`);
+      step = 0;
+    }
+  }
+
+  // Potongan cuti sehari
+  else if (mode === '5') {
+    if (step === 1) {
+      gajiAsas = parseFloat(input);
+      const potongan = gajiAsas / 26;
+      appendBot(`Potongan 1 hari cuti tanpa gaji: RM${potongan.toFixed(2)}`);
+      step = 0;
+    }
+  }
+
+  // Potongan gatepass sejam
+  else if (mode === '6') {
+    if (step === 1) {
+      gajiAsas = parseFloat(input);
+      step = 2;
+      appendBot('Berapa jam gatepass / keluar awal?');
+    } else if (step === 2) {
+      potJam = parseFloat(input);
+      const pot = (gajiAsas / 26 / 8) * potJam;
+      appendBot(`Potongan untuk ${potJam} jam gatepass: RM${pot.toFixed(2)}`);
+      step = 0;
+    }
+  }
+}
+</script>
+
+
+
+</body></html>
